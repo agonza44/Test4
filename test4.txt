@@ -1,0 +1,38 @@
+#Test4--> Compare read mapping using STAR and Salmon
+#For this test we will going to about comparing STAR and Salmon using Isaac.
+
+#We have 12 fasta files provided fro the instructor. 
+
+#first we will log in to isaac using our personal log in account:
+
+ssh [personal ID]@login.isaac.utk.edu
+
+#we will check the reads quality by running FastQC and we will create a folder directory for this:
+
+mkdir 1_fastqc
+cd 1_fastqc
+
+# we will simbolically link the files:
+
+ln -s /lustre/isaac/proj/UTK0208/test4/raw_data/*fastq* .
+
+# now we will create the script to run in Isaac:
+
+nano fastqc.qsh
+
+# the information in the script will be:
+
+#!/bin/bash
+#SBATCH -J fastqc
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH -A ISAAC-UTK0208
+#SBATCH -p condo-epp622
+#SBATCH -q condo
+#SBATCH -t 00:30:00
+
+module load fastqc
+
+fastqc *fastq
+
+
