@@ -160,7 +160,7 @@ quant \
 
 sbatch salmon.qsh
 
---> for this test we nweed to complete a table with information about the results from STAR and Salmon, amoung the information we need to add to the table we have teh total # of reads for each file. for ths part we can just open each file on the browser; for example:
+--> for this test we we need to complete a table with information about the results from STAR and Salmon this table can be found as test4table.xlsx in the Test4 repository directory. Amoung the information we need to add to the table we have teh total # of reads for each file. for ths part we can just open each file on the browser; for example:
 
 Badami_LB_400CH_Clone14_fastqc.html 
 
