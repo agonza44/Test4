@@ -1,26 +1,26 @@
-#Test4--> Compare read mapping using STAR and Salmon
-#For this test we will going to about comparing STAR and Salmon using Isaac.
+-->Test4--> Compare read mapping using STAR and Salmon
+-->For this test we will going to about comparing STAR and Salmon using Isaac.
 
-#We have 12 fasta files provided fro the instructor. 
+-->We have 12 fasta files provided fro the instructor. 
 
-#first we will log in to isaac using our personal log in account:
+-->first we will log in to isaac using our personal log in account:
 
 ssh [personal ID]@login.isaac.utk.edu
 
-#we will check the reads quality by running FastQC and we will create a folder directory for this:
+-->we will check the reads quality by running FastQC and we will create a folder directory for this:
 
 mkdir 1_fastqc
 cd 1_fastqc
 
-# we will simbolically link the files:
+-->we will simbolically link the files:
 
 ln -s /lustre/isaac/proj/UTK0208/test4/raw_data/*fastq* .
 
-# now we will create the script to run in Isaac:
+-->now we will create the script to run in Isaac:
 
 nano fastqc.qsh
 
-# the information in the script will be:
+-->the information in the script will be:
 
 #!/bin/bash
 #SBATCH -J fastqc
@@ -34,5 +34,183 @@ nano fastqc.qsh
 module load fastqc
 
 fastqc *fastq
+
+--> to rtart running this we need to execute teh script:
+
+sbatch star.qsh
+
+--> to check the status of this job we can use:
+
+squeue -u [user ID]
+
+
+
+--> PART 2 Mapping with STAR
+
+--> for this we will make a new folder directoy with the name 2_star:
+
+mkdir navegate to directory path ../2_star
+cd star
+
+--> simbolically link files from the raw data folder:
+ln -s /lustre/isaac/proj/UTK0208/test4/raw_data/*fastq* .
+
+--> we need to make a task arraytxt file containing teh 12 fastq files:
+
+for FILE in *.fastq; do ls $FILE >> filesname1.txt; done
+
+--> now we make a new script containig the parameters for the task array job to be submitted on Isaac:
+
+nano star.qsh
+
+--> the nano .qs file will be configurated:
+
+#!/bin/bash
+#SBATCH -J star-map
+#SBATCH --nodes=1
+#SBATCH --ntasks=8
+#SBATCH -A ISAAC-UTK0208
+#SBATCH -p condo-epp622
+#SBATCH -q condo
+#SBATCH -t 02:00:00
+#SBATCH --mem-per-cpu=8G
+#SBATCH --array=1-12
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=agonza44@vols.utk.edu
+
+
+readonefile=$(sed -n -e "${SLURM_ARRAY_TASK_ID} p" filenames1.txt)
+echo "readonefile is $readonefile"
+
+module load star
+
+for FILE in *.fastq; do \
+STAR \
+--genomeDir /lustre/isaac/proj/UTK0208/rnaseq/raw_data/STAR_gtf_idx \
+--runThreadN 8 \
+--readFilesIn $readonefile \
+--outFileNamePrefix $readonefile \
+--outSAMtype BAM SortedByCoordinate \
+--quantMode TranscriptomeSAM GeneCounts;
+done
+
+
+
+--> now we run the script:
+
+sbatch star.qsh
+
+
+--> if we want to knok if the job is running we will use 'squeue':
+
+squeue -u [user ID]
+
+--> we also can receive an e-mail with notification about the job status.
+
+--> PART 3 Mapping with Salmon 
+
+--> like STAR we make a directory and navegate to it and use the dame fastq files: 
+
+mkdir 3_salmon
+cd ../3_salmon
+ln -s /lustre/isaac/proj/UTK0208/test4/raw_data/*fastq* .
+
+
+--> just like we did with STAR we will make a txt file:
+
+
+for FILE in *.fastq; do ls $FILE >> filesname.txt; done
+
+
+--> we will have to create a new .qsh file for the script:
+
+nano salmon.qsh
+
+--> the script can be configurated like we did with STAR: 
+
+#!/bin/bash
+#SBATCH -J salmonTA
+#SBATCH --nodes=1
+#SBATCH --ntasks=8
+#SBATCH -A ISAAC-UTK0208
+#SBATCH -p condo-epp622
+#SBATCH -q condo
+#SBATCH -t 00:40:00
+#SBATCH --mem-per-cpu=8G
+#SBATCH --array=1-12
+
+readonefile=$(sed -n -e "${SLURM_ARRAY_TASK_ID} p" filenames.txt)
+echo "readonefile is $readonefile"
+quantdir=$(echo $readonefile | sed 's/.fastq/_quant/')
+echo "quantdir is $quantdir"
+
+time \
+/lustre/isaac/proj/UTK0208/rnaseq/software/salmon-1.9.0_linux_x86_64/bin/salmon \
+quant \
+-i /lustre/isaac/proj/UTK0208/rnaseq/raw_data/salmon_transcripts_index \
+-l IU \
+--unmatedReads $readonefile \
+--validateMappings \
+-o $quantdir \
+--threads 8
+
+
+
+--> now we submit the job to Isaac by sbatch:
+
+sbatch salmon.qsh
+
+--> for this test we nweed to complete a table with information about the results from STAR and Salmon, amoung the information we need to add to the table we have teh total # of reads for each file. for ths part we can just open each file on the browser; for example:
+
+Badami_LB_400CH_Clone14_fastqc.html 
+
+--> from there see the total # reads
+
+--> for the second table we need the Uniquely mapped reads %, % of reads mapped to multiple loci, % of reads mapped to too many loci, % of reads unmapped: too many mismatches, % of reads unmapped: too short, % of reads unmapped: other and % of chimeric reads. These are output results from  mapping with STAR, for this we can use 'less' + the name of the fastqLog.final.out file to visualize the information:
+
+
+[agonza44@login2 2_star]$ less Badami_LB_400CH_Clone16.fastqLog.final.out
+[agonza44@login2 2_star]$ less Badami_LB_800CH_Clone14.fastqLog.final.out
+[agonza44@login2 2_star]$ less Badami_LB_400CH_Clone16.fastqLog.final.out
+[agonza44@login2 2_star]$ less Badami_LB_800CH_Clone14.fastqLog.final.out
+[agonza44@login2 2_star]$ less Badami_LB_800CH_Clone15.fastqLog.final.out
+[agonza44@login2 2_star]$ less Badami_LB_800CH_Clone16.fastqLog.final.out
+[agonza44@login2 2_star]$ less Badami_LB_800CH_Clone16.fastqLog.final.out
+[agonza44@login2 2_star]$ less Bergeron_LB_400CH_Clone10.fastqLog.final.out
+[agonza44@login2 2_star]$ less Bergeron_LB_400CH_Clone8.fastqLog.final.out
+[agonza44@login2 2_star]$ less Bergeron_LB_400CH_Clone9.fastqLog.final.out
+[agonza44@login2 2_star]$ less Bergeron_LB_800CH_Clone10.fastqLog.final.out
+[agonza44@login2 2_star]$ less Bergeron_LB_800CH_Clone8.fastqLog.final.out
+[agonza44@login2 2_star]$ less Bergeron_LB_800CH_Clone9.fastqLog.final.out
+
+
+--> to compete the table for Salmon we will go to that directory and the information neede for this table is Number of mappings discarded because of alignment score, Number of fragments entirely discarded because of alignment score, 
+Number of fragments discarded because they are best-mapped to decoys, Number of fragments discarded because they have only dovetail (discordant) mappings to valid targets, and 
+Mapping rate. in this case we can use a method were we ask for the specific information rather than all the data for each file and we can use grep -E to get just what we need. Be careful to use the slurm files 
+
+
+[agonza44@login2 3_salmon]$ [agonza44@login2 3_salmon]$ for FILE in slurm-311324_*; do grep -E 'readonefile is' $FILE >> salmonreads.txt; grep -E 'Number of mappings discarded because of alignment score' $FILE >>umber of fragments entirely discarded because of alignment score' $FILE >> salmonreads.txt; grep -E 'Number of fragments discarded because they are best-mapped to decoys' $FILE >> salmonreads.txt; grep -E 'Number of fragments discarded because they have only dovetail' $FILE >> salmonreads.txt; grep -E 'Mapping rate' $FILE >> salmonreads.txt; done
+
+
+
+--> for the next table we need to find specific reads mapped from STAR:
+
+
+[agonza44@login2 3_salmon]$ for FILE in *ReadsPerGene.out.tab; do ls $FILE >> starmap.txt; grep -E 'Prupe.6G364900' $FILE >> starmap.txt; grep -E 'Prupe.1G531100' $FILE >> starmap.txt; grep -E 'Prupe.1G531400' $FILE >> starmap.txt; grep -E 'Prupe.1G549600' $FILE >> starmap.txt; done
+
+
+--> we have to do the same for reads mapped by Salmon: 
+
+[agonza44@login2 3_salmon]$ for FOLDER in *_quant; do echo $FOLDER >> salmonmap.txt; grep -E 'Prupe.6G364900.1' $FOLDER/quant.sf >> salmonmap.txt; grep -E 'Prupe.1G531100.1' $FOLDER/quant.sf >> salmonmap.txt; grep -E 'Prupe.1G531100.2' $FOLDER/quant.sf >> salmonmap.txt; grep -E 'Prupe.1G531400.1' $FOLDER/quant.sf >> salmonmap.txt; grep -E 'Prupe.1G549600.1' $FOLDER/quant.sf >> salmonmap.txt; grep -E 'Prupe.1G549600.2' $FOLDER/quant.sf >> salmonmap.txt; grep -E 'Prupe.1G549600.3' $FOLDER/quant.sf >> salmonmap.txt; done
+
+
+--> Conclusion
+
+--> It seems to me that Star have better mapping than Salmon considering the totak numbers of reads across the samples the higher number of reads it may suggest that STAR is better, but is not better for all the samples. In some cases Salmon looks bette. Transcript Prupe.1G531100.1 perform better compared to the transcript Prune1G531100.2 according to the Salmon results. The results from the transcripts Prune.1G549600.1, Prune.1G549600.2, and Prune.1G549600.3 are more variable. Overall this indicates that different transcripts outputs. The results from the two mapping methods are different in terms of the final information and depending what we need it will determinate the justification on using one over the other.  
+
+
+
+
+
 
 
